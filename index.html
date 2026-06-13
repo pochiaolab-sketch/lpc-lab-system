@@ -57,6 +57,12 @@
         .status-caution { background-color: #fef9c3 !important; color: #a16207 !important; }
         .status-normal { background-color: #f1f5f9; color: #334155; }
 
+        /* 🌟 新增：操作按鈕樣式 */
+        .action-btn { background: none; border: none; font-size: 1rem; cursor: pointer; opacity: 0.6; transition: 0.2s; padding: 2px 6px; }
+        .action-btn:hover { opacity: 1; transform: scale(1.2); }
+        .modal-body label { font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 4px; }
+        .modal-body .form-control, .modal-body .form-select { border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.95rem; }
+
         @media (max-width: 768px) {
             .top-header-card { padding: 15px 10px; }
             .header-content-wrapper { flex-direction: row; align-items: center; justify-content: flex-start; } 
@@ -65,7 +71,7 @@
             .top-search-title { font-size: 1.3rem; text-align: left; padding-right: 0; margin-bottom: 8px; } 
             .mobile-card-table thead { display: none !important; } 
             .mobile-card-table, .mobile-card-table tbody, .mobile-card-table tr, .mobile-card-table td { display: block; width: 100%; } 
-            .mobile-card-table tr { margin-bottom: 20px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 15px; border: 1px solid #edf2f7; } 
+            .mobile-card-table tr { margin-bottom: 20px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 15px; border: 1px solid #edf2f7; position: relative; } 
             .mobile-card-table td { border: none; padding: 8px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #f1f5f9; text-align: right; } 
             .mobile-card-table td::before { content: attr(data-label); font-weight: 700; color: #94a3b8; font-size: 0.85rem; } 
             .mobile-card-table td.sheet-cell { display: block; text-align: left !important; border-bottom: none; padding-bottom: 0; margin-bottom: 5px; padding-top: 0; }
@@ -113,11 +119,9 @@
             <div class="memo-title">藥品備忘錄</div>
             <div class="memo-input-group">
                 <input type="text" id="memoInput" class="memo-input" placeholder="輸入藥品相關留言，如藥品資訊有誤，需藥品管理人員修改..." onkeypress="if(event.key==='Enter') addNewMemo()">
-                
-                <select id="memoAuthorSelect" class="memo-author-select" onchange="handleMemoAuthorAction(this)">
+                <select id="memoAuthorSelect" class="memo-author-select" onchange="handleBuyerAction(this, null, null, null, true)">
                     <option value="">👤 留言者...</option>
                 </select>
-                
                 <button class="memo-btn" onclick="addNewMemo()">＋ 留言</button>
             </div>
             <div class="memo-list" id="memoListContainer"></div>
@@ -136,156 +140,176 @@
         <div class="table-wrapper" id="tableWrapper">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 mobile-card-table" id="resultsTable">
-                    <thead><tr><th>藥櫃</th><th>藥品名稱</th><th>濃度</th><th>CAS NO.</th><th>規格/廠商</th><th>位置</th><th>編號</th><th>使用狀態</th><th>請購人</th><th>請購日</th><th>訂購日</th><th>需訂購</th><th>GHS</th></tr></thead>
+                    <thead><tr><th>藥櫃</th><th>藥品名稱</th><th>濃度</th><th>CAS NO.</th><th>規格/廠商</th><th>位置</th><th>編號</th><th>使用狀態</th><th>請購人</th><th>請購日</th><th>訂購日</th><th>需訂購</th><th>GHS</th><th>操作</th></tr></thead>
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <div id="ai-chat-widget">
-        <div id="ai-chat-box">
-            <div id="ai-chat-header">
-                <span>✨ 林伯樵助理</span>
-                <span id="ai-chat-close" onclick="toggleChat()">✖</span>
-            </div>
-            <div id="ai-chat-messages">
-                <div class="chat-msg bot">你好！我是林伯樵實驗室的 AI 小管家 🤖<br>你可以直接問我：<br>「幫我找找第三層有什麼藥品？」<br>「Toluene的分子量是多少」</div>
-            </div>
-            <div id="ai-chat-input-area">
-                <input type="text" id="ai-chat-input" placeholder="問問 AI..." onkeypress="if(event.key==='Enter') sendChatMessage()">
-                <button id="ai-chat-send" onclick="sendChatMessage()">➤</button>
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+                <div class="modal-header" style="background-color: #f8fafc; border-radius: 16px 16px 0 0; border-bottom: 1px solid #e2e8f0;">
+                    <h5 class="modal-title" style="font-weight: 800; color: #1e293b;">📝 編輯藥品資料</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label>藥品名稱</label>
+                            <input type="text" id="editName" class="form-control" style="font-weight: 700; color: #2563eb;">
+                        </div>
+                        <div class="col-md-6">
+                            <label>分類/藥櫃 (系統鎖定保護)</label>
+                            <input type="text" id="editSheet" class="form-control" disabled style="background-color: #f1f5f9;">
+                        </div>
+                        <div class="col-md-6">
+                            <label>CAS NO.</label>
+                            <input type="text" id="editCas" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label>濃度</label>
+                            <input type="text" id="editConc" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label>規格</label>
+                            <input type="text" id="editSpec" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label>廠商</label>
+                            <select id="editVendor" class="form-select" onchange="handleDropdownAction('VENDORS', this)"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>位置</label>
+                            <select id="editLocation" class="form-select" onchange="handleDropdownAction('LOCATIONS', this)"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label>編號</label>
+                            <input type="text" id="editNum" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label>使用狀態</label>
+                            <select id="editStatus" class="form-select">
+                                <option value="100%">100%</option><option value="90%">90%</option><option value="80%">80%</option><option value="70%">70%</option><option value="60%">60%</option><option value="50%">50%</option><option value="40%">40%</option><option value="30%">30%</option><option value="20%">20%</option><option value="10%">10%</option><option value="0%">0%</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label>GHS 標籤</label>
+                            <select id="editGhs" class="form-select">
+                                <option value="true">✅ 是 (有標籤)</option>
+                                <option value="false">❌ 否 (無標籤)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: none;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius: 8px; font-weight: 600;">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEditData()" id="saveEditBtn" style="border-radius: 8px; font-weight: 600; background-color: #3b82f6; border: none;">儲存修改</button>
+                </div>
             </div>
         </div>
+    </div>
+
+    <div id="ai-chat-widget">
+        <div id="ai-chat-box"><div id="ai-chat-header"><span>✨ 林伯樵助理</span><span id="ai-chat-close" onclick="toggleChat()">✖</span></div><div id="ai-chat-messages"><div class="chat-msg bot">你好！我是林伯樵實驗室的 AI 小管家 🤖</div></div><div id="ai-chat-input-area"><input type="text" id="ai-chat-input" placeholder="問問 AI..." onkeypress="if(event.key==='Enter') sendChatMessage()"><button id="ai-chat-send" onclick="sendChatMessage()">➤</button></div></div>
         <button id="ai-chat-btn" onclick="toggleChat()" title="開啟 AI 助理">🤖</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
+        // 🔴 這裡已為你寫好網址，請確認！
         const API_URL = "https://script.google.com/macros/s/AKfycbxJBLB2yQgs17l9fzbSVBNd94OseyyQrX-PlbfeZkrbyRpCYHPxiK8d62tz25RfevWUeQ/exec";
 
-        let chemicalData = []; let buyerList = []; let memoList = []; let searchTimeout = null; 
+        let chemicalData = []; let buyerList = []; let memoList = []; let locationList = []; let vendorList = []; 
+        let searchTimeout = null; let currentEditRow = null; let editModalInstance = null;
         const opts = ['100%','90%','80%','70%','60%','50%','40%','30%','20%','10%','0%'];
         const LOCAL_STORAGE_KEY = 'LPC_LAB_DATA_V7';
 
-        function levenshtein(a, b) {
-            const tmp = [];
-            for (let i = 0; i <= a.length; i++) tmp[i] = [i];
-            for (let j = 0; j <= b.length; j++) tmp[0][j] = j;
-            for (let i = 1; i <= a.length; i++) {
-                for (let j = 1; j <= b.length; j++) {
-                    tmp[i][j] = a[i - 1] === b[j - 1] ? tmp[i - 1][j - 1] : Math.min(tmp[i - 1][j - 1] + 1, tmp[i][j - 1] + 1, tmp[i - 1][j] + 1);
-                }
-            }
-            return tmp[a.length][b.length];
-        }
+        function levenshtein(a, b) { /* 容錯演算法 */ const tmp = []; for (let i = 0; i <= a.length; i++) tmp[i] = [i]; for (let j = 0; j <= b.length; j++) tmp[0][j] = j; for (let i = 1; i <= a.length; i++) { for (let j = 1; j <= b.length; j++) { tmp[i][j] = a[i - 1] === b[j - 1] ? tmp[i - 1][j - 1] : Math.min(tmp[i - 1][j - 1] + 1, tmp[i][j - 1] + 1, tmp[i - 1][j] + 1); } } return tmp[a.length][b.length]; }
 
         async function apiCall(action, params = {}) {
             params.action = action;
             try {
-                const res = await fetch(API_URL, {
-                    method: 'POST', redirect: 'follow', body: JSON.stringify(params), headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                });
-                const json = await res.json();
-                if (json.error) throw new Error(json.error);
-                return json.data;
+                const res = await fetch(API_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify(params), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
+                const json = await res.json(); if (json.error) throw new Error(json.error); return json.data;
             } catch (err) { console.error("API 錯誤:", err); throw err; }
         }
 
-        function saveToLocal() { try { localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ data: chemicalData, buyers: buyerList, memos: memoList })); } catch(e) {} }
+        function saveToLocal() { try { localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ data: chemicalData, buyers: buyerList, memos: memoList, locations: locationList, vendors: vendorList })); } catch(e) {} }
 
         document.addEventListener('DOMContentLoaded', () => {
-            let activeData = null;
-            const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (localData) {
-                try {
-                    const parsed = JSON.parse(localData);
-                    if (parsed.data && parsed.data.length > 0) activeData = parsed;
-                } catch(e) {}
-            }
+            editModalInstance = new bootstrap.Modal(document.getElementById('editModal')); // 初始化編輯視窗
+            let activeData = null; const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (localData) { try { const parsed = JSON.parse(localData); if (parsed.data && parsed.data.length > 0) activeData = parsed; } catch(e) {} }
 
             if (activeData) {
-                chemicalData = activeData.data || []; buyerList = activeData.buyers || []; memoList = activeData.memos || []; initUI(); 
+                chemicalData = activeData.data || []; buyerList = activeData.buyers || []; memoList = activeData.memos || []; 
+                locationList = activeData.locations || []; vendorList = activeData.vendors || []; initUI(); 
             } else { document.getElementById('searchInput').placeholder = "首次載入中，請稍候..."; }
 
             apiCall('getLabData').then(jsonString => {
                 const response = JSON.parse(jsonString);
-                chemicalData = response.data || []; buyerList = response.buyers || []; memoList = response.memos || []; saveToLocal();
+                chemicalData = response.data || []; buyerList = response.buyers || []; memoList = response.memos || []; 
+                locationList = response.locations || []; vendorList = response.vendors || []; saveToLocal();
                 if(!activeData) initUI(); 
-                else { const term = document.getElementById('searchInput').value; if (!term) { renderMemoAuthorSelect(); renderMemos(); updateBuyList(); displayData(chemicalData); } }
+                else { const term = document.getElementById('searchInput').value; if (!term) { renderDropdowns(); renderMemos(); updateBuyList(); displayData(chemicalData); } }
             }).catch(e => console.log("背景更新失敗", e));
         });
 
         function initUI() {
             document.getElementById('tableWrapper').style.display = 'block'; document.getElementById('memoSection').style.display = 'block';
             const searchInput = document.getElementById('searchInput'); searchInput.disabled = false; searchInput.placeholder = `🔍 智慧搜尋 ${chemicalData.length} 筆資料...`;
-            renderMemoAuthorSelect();
-            renderMemos(); updateBuyList(); displayData(chemicalData);
+            renderDropdowns(); renderMemos(); updateBuyList(); displayData(chemicalData);
         }
 
         function forceRefresh() {
             const btn = document.getElementById('refreshBtn'); const searchInput = document.getElementById('searchInput');
-            if (btn.classList.contains('spinning')) return; 
-            btn.classList.add('spinning'); searchInput.disabled = true; const oldPlaceholder = searchInput.placeholder; searchInput.placeholder = "🔄 從雲端抓取最新資料中...";
+            if (btn.classList.contains('spinning')) return; btn.classList.add('spinning'); searchInput.disabled = true; searchInput.placeholder = "🔄 同步最新資料中...";
             localStorage.removeItem(LOCAL_STORAGE_KEY);
-
             apiCall('forceRefreshData').then(jsonString => {
-                const response = JSON.parse(jsonString); chemicalData = response.data || []; buyerList = response.buyers || []; memoList = response.memos || []; saveToLocal(); 
+                const response = JSON.parse(jsonString); chemicalData = response.data || []; buyerList = response.buyers || []; memoList = response.memos || []; locationList = response.locations || []; vendorList = response.vendors || []; saveToLocal(); 
                 btn.classList.remove('spinning'); searchInput.disabled = false; searchInput.placeholder = `🔍 智慧搜尋 ${chemicalData.length} 筆資料...`;
-                renderMemoAuthorSelect(); renderMemos(); updateBuyList();
-                
-                const term = searchInput.value.toLowerCase().trim();
-                if (!term) return displayData(chemicalData);
-                const filtered = chemicalData.filter(r => {
-                    const name = String(r['藥品名稱'] || '').toLowerCase();
-                    const cas = String(r['CAS  NO.'] || r['CAS NO.'] || '').toLowerCase();
-                    const isFuzzyMatch = term.length > 4 && name.split(/[\s\-]+/).some(w => levenshtein(term, w) <= 2);
-                    return name.includes(term) || cas.includes(term) || isFuzzyMatch;
-                });
-                displayData(filtered);
-            }).catch(err => { btn.classList.remove('spinning'); searchInput.disabled = false; searchInput.placeholder = oldPlaceholder; alert("更新失敗，請檢查網路連線。"); });
+                renderDropdowns(); renderMemos(); updateBuyList(); document.getElementById('searchInput').dispatchEvent(new Event('input'));
+            }).catch(err => { btn.classList.remove('spinning'); searchInput.disabled = false; alert("更新失敗，請檢查網路。"); });
         }
 
-        // 🌟 渲染下拉選單 (補回「新增/刪除」按鈕)
-        function renderMemoAuthorSelect() {
-            const select = document.getElementById('memoAuthorSelect');
-            let currentVal = select.value; 
-            let html = '<option value="">👤 留言者...</option>';
-            buyerList.forEach(b => { html += `<option value="${b}">${b}</option>`; });
-            html += `<option disabled>──────</option><option value="ADD_NEW">➕ 新增...</option><option value="DELETE_USER">❌ 刪除...</option>`;
-            select.innerHTML = html;
-            if (buyerList.includes(currentVal)) select.value = currentVal;
-            else select.value = '';
+        // 🌟 渲染所有的下拉選單 (人員、位置、廠商)
+        function renderDropdowns() {
+            const memoAuth = document.getElementById('memoAuthorSelect'); let currAuth = memoAuth.value;
+            memoAuth.innerHTML = '<option value="">👤 留言者...</option>' + buyerList.map(b => `<option value="${b}">${b}</option>`).join('') + `<option disabled>──────</option><option value="ADD_NEW">➕ 新增人員...</option><option value="DELETE_USER">❌ 刪除人員...</option>`;
+            if (buyerList.includes(currAuth)) memoAuth.value = currAuth; else memoAuth.value = '';
+
+            const editLoc = document.getElementById('editLocation'); let currLoc = editLoc.value;
+            editLoc.innerHTML = '<option value="">- 未標示 -</option>' + locationList.map(l => `<option value="${l}">${l}</option>`).join('') + `<option disabled>──────</option><option value="ADD_NEW">➕ 新增位置...</option><option value="DELETE_USER">❌ 刪除位置...</option>`;
+            if(currLoc) editLoc.value = currLoc;
+
+            const editVen = document.getElementById('editVendor'); let currVen = editVen.value;
+            editVen.innerHTML = '<option value="">- 未標示 -</option>' + vendorList.map(v => `<option value="${v}">${v}</option>`).join('') + `<option disabled>──────</option><option value="ADD_NEW">➕ 新增廠商...</option><option value="DELETE_USER">❌ 刪除廠商...</option>`;
+            if(currVen) editVen.value = currVen;
         }
 
-        // 🌟 新增：專屬備忘錄下拉選單的操作邏輯 (可以直接新增/刪除人員)
-        function handleMemoAuthorAction(selectElem) {
+        // 🌟 通用的清單新增/刪除邏輯 (位置與廠商)
+        function handleDropdownAction(type, selectElem) {
             const val = selectElem.value;
             if (val === 'ADD_NEW' || val === 'DELETE_USER') {
-                let actionStr = val === 'ADD_NEW' ? '新增' : '刪除';
-                let name = prompt(`請輸入要「${actionStr}」的人員名稱：`);
+                let actionStr = val === 'ADD_NEW' ? '新增' : '刪除'; let typeName = type === 'LOCATIONS' ? '位置' : '廠商';
+                let name = prompt(`請輸入要「${actionStr}」的${typeName}名稱：`);
                 if (name && name.trim() !== '') {
-                    const targetName = name.trim();
-                    selectElem.disabled = true;
-                    if (val === 'ADD_NEW') {
-                        apiCall('addBuyer', {name: targetName}).then(updatedList => {
-                            buyerList = updatedList; saveToLocal(); renderMemoAuthorSelect(); displayData(chemicalData); updateBuyList();
-                            document.getElementById('memoAuthorSelect').value = targetName; // 自動選取剛新增的人
-                            selectElem.disabled = false;
-                        }).catch(e => { selectElem.disabled = false; selectElem.value = ''; alert('操作失敗！'); });
-                    } else {
-                        apiCall('removeBuyer', {name: targetName}).then(updatedList => {
-                            buyerList = updatedList; chemicalData.forEach(r => { if(String(r['請購人']) === targetName) r['請購人'] = ''; });
-                            saveToLocal(); renderMemoAuthorSelect(); displayData(chemicalData); updateBuyList();
-                            alert(`已刪除人員「${targetName}」。`);
-                            selectElem.disabled = false;
-                        }).catch(e => { selectElem.disabled = false; selectElem.value = ''; alert('操作失敗！'); });
-                    }
-                } else {
-                    selectElem.value = ''; // 如果按取消，重設為預設值
-                }
+                    const targetName = name.trim(); selectElem.disabled = true;
+                    let apiCmd = (val === 'ADD_NEW' ? 'add' : 'remove') + (type === 'LOCATIONS' ? 'Location' : 'Vendor');
+                    apiCall(apiCmd, {name: targetName}).then(updatedList => {
+                        if(type === 'LOCATIONS') locationList = updatedList; else vendorList = updatedList;
+                        saveToLocal(); renderDropdowns();
+                        selectElem.value = val === 'ADD_NEW' ? targetName : ''; selectElem.disabled = false;
+                        if(val === 'DELETE_USER') alert(`已刪除${typeName}「${targetName}」。`);
+                    }).catch(e => { selectElem.disabled = false; selectElem.value = ''; alert('操作失敗！'); });
+                } else { selectElem.value = ''; }
             }
         }
 
+        // --- 表格顯示邏輯 ---
         function formatStatus(s) { s = String(s || '').trim(); if (s === '1' || s === '1.0') return '100%'; if (s === '0') return '0%'; if (/^0\.[1-9]$/.test(s)) return (parseFloat(s)*100)+'%'; return s; }
 
         function getBuyerSelectHtml(r) {
@@ -304,16 +328,6 @@
             return `<div style="display:flex;gap:2px;justify-content:center;"><select class="date-select ${prefix}-m-${r['_rowIndex']}" onchange="syncDateSelect('${r['來源分頁']}', ${r['_rowIndex']}, ${r[colIndexKey]}, '${colName}', '${prefix}')">${mOpts}</select><select class="date-select ${prefix}-d-${r['_rowIndex']}" onchange="syncDateSelect('${r['來源分頁']}', ${r['_rowIndex']}, ${r[colIndexKey]}, '${colName}', '${prefix}')">${dOpts}</select></div>`;
         }
 
-        function updateBuyList() {
-            const body = document.getElementById('buyListBody'); const toBuy = chemicalData.filter(r => String(r['需訂購'] || '').toLowerCase() === 'true');
-            body.innerHTML = toBuy.map(r => {
-                let loc = []; for(let k in r) if(k.includes('位置') && r[k]) loc.push(String(r[k]).trim());
-                let s = formatStatus(r['使用狀態']); let colorClass = ['10%','20%','0%'].includes(s) ? 'status-danger' : (s === '30%' ? 'status-warning' : (s === '40%' ? 'status-caution' : 'status-normal'));
-                return `<tr><td data-label="藥櫃" class="sheet-cell"><span class="badge-soft badge-sheet">${r['來源分頁']}</span></td><td data-label="名稱" class="name-cell">${r['藥品名稱']}</td><td data-label="CAS NO.">${r['CAS  NO.']||r['CAS NO.']||'-'}</td><td data-label="規格" class="spec-cell">${r['規格']||'-'}</td><td data-label="位置"><span class="badge-soft badge-location">${loc.join('-')||'-'}</span></td><td data-label="編號"><span class="badge-num">${r['編號']||'-'}</span></td><td data-label="狀態"><span class="badge-soft ${colorClass}">${s}</span></td><td data-label="請購人">${getBuyerSelectHtml(r)}</td><td data-label="請購日">${getDateInputHtml(r, '請購日', '_reqDateColIndex', 'req-date')}</td><td data-label="訂購日">${getDateInputHtml(r, '訂購日', '_orderDateColIndex', 'order-date')}</td><td data-label="需訂購"><input type="checkbox" class="form-check-input order-checkbox" checked onchange="syncOrderCheck(this, '${r['來源分頁']}', ${r['_rowIndex']}, ${r['_orderColIndex']})"></td></tr>`;
-            }).join('');
-            updateUIVisibility(document.getElementById('searchInput').value.trim());
-        }
-
         function displayData(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = data.slice(0, 50).map(r => {
@@ -322,119 +336,100 @@
                 let colorClass = ['10%','20%','0%'].includes(s) ? 'status-danger' : (s === '30%' ? 'status-warning' : (s === '40%' ? 'status-caution' : 'status-normal'));
                 let selectHtml = `<select class="sheet-dropdown ${colorClass}" data-original="${s}" onchange="syncStatus(this,'${r['來源分頁']}',${r['_rowIndex']},${r['_statusColIndex']})">` + opts.map(o => `<option value="${o}" ${o===s?'selected':''}>${o}</option>`).join('') + `</select>`;
                 let isOrdered = String(r['需訂購'] || '').toLowerCase() === 'true'; let orderHtml = r['_orderColIndex'] > 0 ? `<input type="checkbox" class="form-check-input order-checkbox order-chk-${r['_rowIndex']}" ${isOrdered ? 'checked' : ''} onchange="syncOrderCheck(this, '${r['來源分頁']}', ${r['_rowIndex']}, ${r['_orderColIndex']})">` : '-';
-                return `<tr><td data-label="藥櫃" class="sheet-cell"><span class="badge-soft badge-sheet">${r['來源分頁']}</span></td><td data-label="藥品名稱" class="name-cell">${r['藥品名稱']}</td><td data-label="濃度">${r['濃度']||'-'}</td><td data-label="CAS NO.">${r['CAS  NO.']||r['CAS NO.']||'-'}</td><td data-label="規格/廠商" class="spec-cell"><div class="spec-vendor-container"><span class="spec-item">${r['規格']||'-'}</span><span class="vendor-item">${r['廠商']||'-'}</span></div></td><td data-label="位置"><span class="badge-soft badge-location">${r['位置']||'-'}</span></td><td data-label="編號"><span class="badge-num">${r['編號']||'-'}</span></td><td data-label="使用狀態">${selectHtml}</td><td data-label="請購人">${getBuyerSelectHtml(r)}</td><td data-label="請購日">${getDateInputHtml(r, '請購日', '_reqDateColIndex', 'req-date')}</td><td data-label="訂購日">${getDateInputHtml(r, '訂購日', '_orderDateColIndex', 'order-date')}</td><td data-label="需訂購">${orderHtml}</td><td data-label="GHS">${ghsBadge}</td></tr>`;
+                
+                // 🌟 新增：操作按鈕 (編輯 & 刪除)
+                let actionHtml = `<button class="action-btn" title="編輯" onclick="openEditModal('${r['來源分頁']}', ${r['_rowIndex']})">✏️</button>
+                                  <button class="action-btn" title="刪除" onclick="confirmDelete('${r['來源分頁']}', ${r['_rowIndex']}, '${r['藥品名稱']}')">🗑️</button>`;
+
+                return `<tr><td data-label="藥櫃" class="sheet-cell"><span class="badge-soft badge-sheet">${r['來源分頁']}</span></td><td data-label="藥品名稱" class="name-cell">${r['藥品名稱']}</td><td data-label="濃度">${r['濃度']||'-'}</td><td data-label="CAS NO.">${r['CAS  NO.']||r['CAS NO.']||'-'}</td><td data-label="規格/廠商" class="spec-cell"><div class="spec-vendor-container"><span class="spec-item">${r['規格']||'-'}</span><span class="vendor-item">${r['廠商']||'-'}</span></div></td><td data-label="位置"><span class="badge-soft badge-location">${r['位置']||'-'}</span></td><td data-label="編號"><span class="badge-num">${r['編號']||'-'}</span></td><td data-label="使用狀態">${selectHtml}</td><td data-label="請購人">${getBuyerSelectHtml(r)}</td><td data-label="請購日">${getDateInputHtml(r, '請購日', '_reqDateColIndex', 'req-date')}</td><td data-label="訂購日">${getDateInputHtml(r, '訂購日', '_orderDateColIndex', 'order-date')}</td><td data-label="需訂購">${orderHtml}</td><td data-label="GHS">${ghsBadge}</td><td data-label="操作">${actionHtml}</td></tr>`;
             }).join('');
         }
 
+        // 🌟 新增：開啟編輯視窗並填入資料
+        function openEditModal(sheetName, rowIndex) {
+            currentEditRow = chemicalData.find(r => r['來源分頁'] === sheetName && r['_rowIndex'] === rowIndex);
+            if (!currentEditRow) return alert("找不到藥品資料！");
+            
+            document.getElementById('editName').value = currentEditRow['藥品名稱'] || '';
+            document.getElementById('editSheet').value = currentEditRow['來源分頁'] || '';
+            document.getElementById('editCas').value = currentEditRow['CAS NO.'] || currentEditRow['CAS  NO.'] || '';
+            document.getElementById('editConc').value = currentEditRow['濃度'] || '';
+            document.getElementById('editSpec').value = currentEditRow['規格'] || '';
+            document.getElementById('editNum').value = currentEditRow['編號'] || '';
+            
+            // 處理選單：如果原本的值不在清單內，動態幫他加一個暫時選項
+            const venSelect = document.getElementById('editVendor'); const locSelect = document.getElementById('editLocation');
+            let vVal = String(currentEditRow['廠商'] || '').trim(); let lVal = String(currentEditRow['位置'] || '').trim();
+            if(vVal && !vendorList.includes(vVal)) { let opt = document.createElement('option'); opt.value = vVal; opt.text = vVal; venSelect.add(opt, venSelect.options[1]); }
+            if(lVal && !locationList.includes(lVal)) { let opt = document.createElement('option'); opt.value = lVal; opt.text = lVal; locSelect.add(opt, locSelect.options[1]); }
+            venSelect.value = vVal; locSelect.value = lVal;
+
+            document.getElementById('editStatus').value = formatStatus(currentEditRow['使用狀態']);
+            let ghsVal = String(currentEditRow['GHS'] || '').toLowerCase();
+            document.getElementById('editGhs').value = (ghsVal === 'true' || ghsVal === '是' || ghsVal === '1') ? 'true' : 'false';
+
+            editModalInstance.show();
+        }
+
+        // 🌟 新增：儲存編輯資料
+        function saveEditData() {
+            if (!currentEditRow) return;
+            const btn = document.getElementById('saveEditBtn'); btn.disabled = true; btn.innerText = "儲存中...";
+
+            // 將原本 row 物件裡的名字當作 key 來更新
+            let updateData = {};
+            for (let key in currentEditRow) {
+                if (key.includes('藥品名稱')) updateData[key] = document.getElementById('editName').value;
+                if (key.includes('CAS')) updateData[key] = document.getElementById('editCas').value;
+                if (key.includes('濃度')) updateData[key] = document.getElementById('editConc').value;
+                if (key.includes('規格')) updateData[key] = document.getElementById('editSpec').value;
+                if (key.includes('廠商')) updateData[key] = document.getElementById('editVendor').value;
+                if (key.includes('位置')) updateData[key] = document.getElementById('editLocation').value;
+                if (key.includes('編號')) updateData[key] = document.getElementById('editNum').value;
+                if (key.includes('使用狀態')) updateData[key] = document.getElementById('editStatus').value;
+                if (key.includes('GHS')) updateData[key] = document.getElementById('editGhs').value === 'true' ? '是' : '否';
+            }
+
+            apiCall('updateChemical', { sheetName: currentEditRow['來源分頁'], rowIndex: currentEditRow['_rowIndex'], updateData: updateData })
+            .then(success => {
+                btn.disabled = false; btn.innerText = "儲存修改";
+                if(success) { editModalInstance.hide(); forceRefresh(); } else { alert("儲存失敗！"); }
+            }).catch(e => { btn.disabled = false; btn.innerText = "儲存修改"; alert("連線異常！"); });
+        }
+
+        // 🌟 新增：刪除藥品警告與執行
+        function confirmDelete(sheetName, rowIndex, drugName) {
+            if (confirm(`🚨 警告：您確定要將【 ${drugName} 】從資料庫中永久刪除嗎？\n(刪除後無法復原，請確認此藥品已完全報廢或用罄)`)) {
+                document.getElementById('searchInput').placeholder = "🗑️ 正在從雲端刪除資料...";
+                apiCall('deleteChemical', { sheetName: sheetName, rowIndex: rowIndex })
+                .then(success => { if(success) forceRefresh(); else alert("刪除失敗！"); })
+                .catch(e => alert("連線異常，刪除失敗！"));
+            }
+        }
+
+        // --- 以下為原有的附屬功能 (搜尋、請購、AI聊天) ---
         document.getElementById('searchInput').oninput = function() {
             clearTimeout(searchTimeout); const term = this.value.toLowerCase().trim(); updateUIVisibility(term); 
             searchTimeout = setTimeout(() => { 
                 if(!term) return displayData(chemicalData); 
-                const filtered = chemicalData.filter(r => {
-                    const name = String(r['藥品名稱'] || '').toLowerCase();
-                    const cas = String(r['CAS  NO.'] || r['CAS NO.'] || '').toLowerCase();
-                    const isFuzzyMatch = term.length > 4 && name.split(/[\s\-]+/).some(w => levenshtein(term, w) <= 2);
-                    return name.includes(term) || cas.includes(term) || isFuzzyMatch;
-                });
+                const filtered = chemicalData.filter(r => { const name = String(r['藥品名稱'] || '').toLowerCase(); const cas = String(r['CAS  NO.'] || r['CAS NO.'] || '').toLowerCase(); const isFuzzyMatch = term.length > 4 && name.split(/[\s\-]+/).some(w => levenshtein(term, w) <= 2); return name.includes(term) || cas.includes(term) || isFuzzyMatch; });
                 displayData(filtered); 
             }, 250); 
         };
 
-        function updateUIVisibility(searchVal) {
-            const buyListContainer = document.getElementById('buyListContainer'); const memoSection = document.getElementById('memoSection');
-            if (searchVal !== "") { memoSection.style.display = 'none'; buyListContainer.style.display = 'none'; } 
-            else { memoSection.style.display = 'block'; const hasToBuy = chemicalData.some(r => String(r['需訂購'] || '').toLowerCase() === 'true'); buyListContainer.style.display = hasToBuy ? 'block' : 'none'; }
-        }
-
-        function renderMemos() {
-            const container = document.getElementById('memoListContainer');
-            if (memoList.length === 0) { container.innerHTML = '<div class="text-center text-muted" style="font-size:0.85rem;">目前沒有備忘錄。</div>'; return; }
-            container.innerHTML = memoList.map(m => {
-                const authorTag = m.author ? `<span class="memo-author-badge">${m.author}</span>` : '';
-                return `<div class="memo-item"><div class="memo-text">${authorTag}${m.text}</div><div class="memo-meta"><span>${m.time}</span><button class="memo-delete" onclick="deleteMemo('${m.id}')">✖</button></div></div>`;
-            }).join('');
-        }
-
-        function addNewMemo() {
-            const input = document.getElementById('memoInput'); 
-            const authorSelect = document.getElementById('memoAuthorSelect');
-            const textVal = input.value.trim();
-            const authorVal = authorSelect.value;
-            
-            if (!authorVal) { alert("⚠️ 為了方便管理，請先在左邊的下拉選單選擇「留言者」！"); authorSelect.focus(); return; }
-            if (!textVal) return;
-
-            apiCall('addMemo', {text: textVal, author: authorVal}).then(updated => { 
-                input.value = ''; memoList = updated; saveToLocal(); renderMemos(); 
-            });
-        }
-
+        function updateUIVisibility(searchVal) { const buyListContainer = document.getElementById('buyListContainer'); const memoSection = document.getElementById('memoSection'); if (searchVal !== "") { memoSection.style.display = 'none'; buyListContainer.style.display = 'none'; } else { memoSection.style.display = 'block'; const hasToBuy = chemicalData.some(r => String(r['需訂購'] || '').toLowerCase() === 'true'); buyListContainer.style.display = hasToBuy ? 'block' : 'none'; } }
+        function updateBuyList() { const body = document.getElementById('buyListBody'); const toBuy = chemicalData.filter(r => String(r['需訂購'] || '').toLowerCase() === 'true'); body.innerHTML = toBuy.map(r => { let loc = []; for(let k in r) if(k.includes('位置') && r[k]) loc.push(String(r[k]).trim()); let s = formatStatus(r['使用狀態']); let colorClass = ['10%','20%','0%'].includes(s) ? 'status-danger' : (s === '30%' ? 'status-warning' : (s === '40%' ? 'status-caution' : 'status-normal')); return `<tr><td data-label="藥櫃" class="sheet-cell"><span class="badge-soft badge-sheet">${r['來源分頁']}</span></td><td data-label="名稱" class="name-cell">${r['藥品名稱']}</td><td data-label="CAS NO.">${r['CAS  NO.']||r['CAS NO.']||'-'}</td><td data-label="規格" class="spec-cell">${r['規格']||'-'}</td><td data-label="位置"><span class="badge-soft badge-location">${loc.join('-')||'-'}</span></td><td data-label="編號"><span class="badge-num">${r['編號']||'-'}</span></td><td data-label="狀態"><span class="badge-soft ${colorClass}">${s}</span></td><td data-label="請購人">${getBuyerSelectHtml(r)}</td><td data-label="請購日">${getDateInputHtml(r, '請購日', '_reqDateColIndex', 'req-date')}</td><td data-label="訂購日">${getDateInputHtml(r, '訂購日', '_orderDateColIndex', 'order-date')}</td><td data-label="需訂購"><input type="checkbox" class="form-check-input order-checkbox" checked onchange="syncOrderCheck(this, '${r['來源分頁']}', ${r['_rowIndex']}, ${r['_orderColIndex']})"></td></tr>`; }).join(''); updateUIVisibility(document.getElementById('searchInput').value.trim()); }
+        function renderMemos() { const container = document.getElementById('memoListContainer'); if (memoList.length === 0) { container.innerHTML = '<div class="text-center text-muted" style="font-size:0.85rem;">目前沒有備忘錄。</div>'; return; } container.innerHTML = memoList.map(m => { const authorTag = m.author ? `<span class="memo-author-badge">${m.author}</span>` : ''; return `<div class="memo-item"><div class="memo-text">${authorTag}${m.text}</div><div class="memo-meta"><span>${m.time}</span><button class="memo-delete" onclick="deleteMemo('${m.id}')">✖</button></div></div>`; }).join(''); }
+        function addNewMemo() { const input = document.getElementById('memoInput'); const authorSelect = document.getElementById('memoAuthorSelect'); const textVal = input.value.trim(); const authorVal = authorSelect.value; if (!authorVal) { alert("⚠️ 為了方便管理，請先選擇「留言者」！"); authorSelect.focus(); return; } if (!textVal) return; apiCall('addMemo', {text: textVal, author: authorVal}).then(updated => { input.value = ''; memoList = updated; saveToLocal(); renderMemos(); }); }
         function deleteMemo(id) { if (confirm('確定刪除這則備忘錄嗎？')) { apiCall('deleteMemo', {id: id}).then(updated => { memoList = updated; saveToLocal(); renderMemos(); }); } }
-
-        function syncStatus(el, sheet, row, col) {
-            const val = el.value; const origVal = el.getAttribute('data-original'); el.disabled = true;
-            let target = chemicalData.find(r => r['來源分頁']===sheet && r['_rowIndex']===row); if(target) { target['使用狀態'] = val; saveToLocal(); } 
-            apiCall('updateSheetStatus', {sheetName: sheet, rowIndex: row, colIndex: col, newValue: val}).then(s => {
-                el.disabled = false; if (!s) { el.value = origVal; if(target){ target['使用狀態']=origVal; saveToLocal();} alert("寫入失敗！"); return; }
-                el.setAttribute('data-original', val); el.className = `sheet-dropdown ${['10%','20%','0%'].includes(val)?'status-danger':(val==='30%'?'status-warning':(val==='40%'?'status-caution':'status-normal'))}`; updateBuyList();
-            }).catch(() => { el.disabled = false; el.value = origVal; if(target) { target['使用狀態'] = origVal; saveToLocal(); } alert("連線異常！"); });
-        }
-
-        function handleBuyerAction(selectElem, sheetName, rowIndex, colIndex) {
-            const val = selectElem.value; const originalVal = selectElem.getAttribute('data-original');
-            if (val === 'ADD_NEW' || val === 'DELETE_USER') {
-                let actionStr = val === 'ADD_NEW' ? '新增' : '刪除'; let name = prompt(`請輸入要「${actionStr}」的人員名稱：`);
-                if (name && name.trim() !== '') {
-                    const targetName = name.trim(); selectElem.disabled = true;
-                    if (val === 'ADD_NEW') {
-                        apiCall('addBuyer', {name: targetName}).then(updatedList => { buyerList = updatedList; return apiCall('updateSheetStatus', {sheetName: sheetName, rowIndex: rowIndex, colIndex: colIndex, newValue: targetName}); }).then(() => {
-                            let r = chemicalData.find(x => x['來源分頁']===sheetName && x['_rowIndex']===rowIndex); if(r) { r['請購人'] = targetName; saveToLocal(); } 
-                            renderMemoAuthorSelect();
-                            displayData(chemicalData); updateBuyList();
-                        }).catch(e => { selectElem.disabled = false; selectElem.value = originalVal; alert('操作失敗！'); });
-                    } else {
-                        apiCall('removeBuyer', {name: targetName}).then(updatedList => { 
-                            buyerList = updatedList; chemicalData.forEach(r => { if(String(r['請購人']) === targetName) r['請購人'] = ''; }); saveToLocal(); 
-                            renderMemoAuthorSelect();
-                            displayData(chemicalData); updateBuyList(); alert(`已刪除人員「${targetName}」。`); 
-                        }).catch(e => { selectElem.disabled = false; selectElem.value = originalVal; alert('操作失敗！'); });
-                    }
-                } else { selectElem.value = originalVal; }
-            } else {
-                selectElem.disabled = true; let targetRow = chemicalData.find(x => x['來源分頁']===sheetName && x['_rowIndex']===rowIndex); if(targetRow) { targetRow['請購人'] = val; saveToLocal(); } 
-                apiCall('updateSheetStatus', {sheetName: sheetName, rowIndex: rowIndex, colIndex: colIndex, newValue: val}).then(() => { selectElem.disabled = false; selectElem.setAttribute('data-original', val); updateBuyList(); });
-            }
-        }
-
-        function syncDateSelect(sheetName, rowIndex, colIndex, colName, prefix) {
-            let mVal = document.querySelector(`.${prefix}-m-${rowIndex}`).value; let dVal = document.querySelector(`.${prefix}-d-${rowIndex}`).value;
-            let val = (mVal && dVal) ? `${mVal.padStart(2, '0')}/${dVal.padStart(2, '0')}` : ""; if (!mVal && !dVal) val = ""; else if (!mVal || !dVal) return;
-            let r = chemicalData.find(x => x['來源分頁'] === sheetName && x['_rowIndex'] === rowIndex); if(r) { r[colName] = val; saveToLocal(); } 
-            apiCall('updateSheetStatus', {sheetName: sheetName, rowIndex: rowIndex, colIndex: colIndex, newValue: val}).then(() => { updateBuyList(); });
-        }
-
-        function syncOrderCheck(checkboxElem, sheetName, rowIndex, colIndex) {
-            const isChecked = checkboxElem.checked; checkboxElem.disabled = true; 
-            let targetRow = chemicalData.find(r => r['來源分頁'] === sheetName && r['_rowIndex'] === rowIndex);
-            if (targetRow) { targetRow['需訂購'] = isChecked ? 'true' : 'false'; if (!isChecked) { targetRow['請購人'] = ''; targetRow['請購日'] = ''; targetRow['訂購日'] = ''; } saveToLocal(); }
-            const colMap = { order: targetRow['_orderColIndex'], buyer: targetRow['_buyerColIndex'], reqDate: targetRow['_reqDateColIndex'], orderDate: targetRow['_orderDateColIndex'] };
-            apiCall('toggleNeedToOrder', {sheetName: sheetName, rowIndex: rowIndex, isChecked: isChecked, colMap: colMap}).then(success => {
-                checkboxElem.disabled = false; if (success) { const term = document.getElementById('searchInput').value.toLowerCase().trim(); if (!term) displayData(chemicalData); else displayData(chemicalData.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(term)))); updateBuyList(); }
-            }).catch(err => { checkboxElem.disabled = false; checkboxElem.checked = !isChecked; alert("連線失敗！"); });
-        }
-
+        function syncStatus(el, sheet, row, col) { const val = el.value; const origVal = el.getAttribute('data-original'); el.disabled = true; let target = chemicalData.find(r => r['來源分頁']===sheet && r['_rowIndex']===row); if(target) { target['使用狀態'] = val; saveToLocal(); } apiCall('updateSheetStatus', {sheetName: sheet, rowIndex: row, colIndex: col, newValue: val}).then(s => { el.disabled = false; if (!s) { el.value = origVal; if(target){ target['使用狀態']=origVal; saveToLocal();} alert("寫入失敗！"); return; } el.setAttribute('data-original', val); el.className = `sheet-dropdown ${['10%','20%','0%'].includes(val)?'status-danger':(val==='30%'?'status-warning':(val==='40%'?'status-caution':'status-normal'))}`; updateBuyList(); }).catch(() => { el.disabled = false; el.value = origVal; if(target) { target['使用狀態'] = origVal; saveToLocal(); } alert("連線異常！"); }); }
+        function handleBuyerAction(selectElem, sheetName, rowIndex, colIndex, isMemo = false) { const val = selectElem.value; const originalVal = selectElem.getAttribute('data-original'); if (val === 'ADD_NEW' || val === 'DELETE_USER') { let actionStr = val === 'ADD_NEW' ? '新增' : '刪除'; let name = prompt(`請輸入要「${actionStr}」的人員名稱：`); if (name && name.trim() !== '') { const targetName = name.trim(); selectElem.disabled = true; if (val === 'ADD_NEW') { apiCall('addBuyer', {name: targetName}).then(updatedList => { buyerList = updatedList; saveToLocal(); renderDropdowns(); displayData(chemicalData); updateBuyList(); if(isMemo) document.getElementById('memoAuthorSelect').value = targetName; selectElem.disabled = false; }).catch(e => { selectElem.disabled = false; selectElem.value = originalVal||''; alert('操作失敗！'); }); } else { apiCall('removeBuyer', {name: targetName}).then(updatedList => { buyerList = updatedList; chemicalData.forEach(r => { if(String(r['請購人']) === targetName) r['請購人'] = ''; }); saveToLocal(); renderDropdowns(); displayData(chemicalData); updateBuyList(); alert(`已刪除人員「${targetName}」。`); selectElem.disabled = false; }).catch(e => { selectElem.disabled = false; selectElem.value = originalVal||''; alert('操作失敗！'); }); } } else { selectElem.value = originalVal||''; } } else if(!isMemo) { selectElem.disabled = true; let targetRow = chemicalData.find(x => x['來源分頁']===sheetName && x['_rowIndex']===rowIndex); if(targetRow) { targetRow['請購人'] = val; saveToLocal(); } apiCall('updateSheetStatus', {sheetName: sheetName, rowIndex: rowIndex, colIndex: colIndex, newValue: val}).then(() => { selectElem.disabled = false; selectElem.setAttribute('data-original', val); updateBuyList(); }); } }
+        function syncDateSelect(sheetName, rowIndex, colIndex, colName, prefix) { let mVal = document.querySelector(`.${prefix}-m-${rowIndex}`).value; let dVal = document.querySelector(`.${prefix}-d-${rowIndex}`).value; let val = (mVal && dVal) ? `${mVal.padStart(2, '0')}/${dVal.padStart(2, '0')}` : ""; if (!mVal && !dVal) val = ""; else if (!mVal || !dVal) return; let r = chemicalData.find(x => x['來源分頁'] === sheetName && x['_rowIndex'] === rowIndex); if(r) { r[colName] = val; saveToLocal(); } apiCall('updateSheetStatus', {sheetName: sheetName, rowIndex: rowIndex, colIndex: colIndex, newValue: val}).then(() => { updateBuyList(); }); }
+        function syncOrderCheck(checkboxElem, sheetName, rowIndex, colIndex) { const isChecked = checkboxElem.checked; checkboxElem.disabled = true; let targetRow = chemicalData.find(r => r['來源分頁'] === sheetName && r['_rowIndex'] === rowIndex); if (targetRow) { targetRow['需訂購'] = isChecked ? 'true' : 'false'; if (!isChecked) { targetRow['請購人'] = ''; targetRow['請購日'] = ''; targetRow['訂購日'] = ''; } saveToLocal(); } const colMap = { order: targetRow['_orderColIndex'], buyer: targetRow['_buyerColIndex'], reqDate: targetRow['_reqDateColIndex'], orderDate: targetRow['_orderDateColIndex'] }; apiCall('toggleNeedToOrder', {sheetName: sheetName, rowIndex: rowIndex, isChecked: isChecked, colMap: colMap}).then(success => { checkboxElem.disabled = false; if (success) { const term = document.getElementById('searchInput').value.toLowerCase().trim(); if (!term) displayData(chemicalData); else displayData(chemicalData.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(term)))); updateBuyList(); } }).catch(err => { checkboxElem.disabled = false; checkboxElem.checked = !isChecked; alert("連線失敗！"); }); }
         function toggleChat() { const box = document.getElementById('ai-chat-box'); if (box.style.display === 'flex') box.style.display = 'none'; else { box.style.display = 'flex'; document.getElementById('ai-chat-input').focus(); } }
-        function formatBotMessage(text) { let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); html = html.replace(/\n/g, '<br>'); return html; }
-        
-        function sendChatMessage() {
-            const input = document.getElementById('ai-chat-input'); const msg = input.value.trim(); if (!msg) return;
-            appendMessage('user', msg); input.value = ''; input.disabled = true; const typingId = appendMessage('bot', '...', true);
-            apiCall('askGeminiAssistant', {userMessage: msg}).then(response => { document.getElementById(typingId).remove(); appendMessage('bot', formatBotMessage(response)); input.disabled = false; input.focus(); }).catch(err => { document.getElementById(typingId).remove(); appendMessage('bot', '⚠️ 抱歉，連線發生異常。'); input.disabled = false; input.focus(); });
-        }
-        function appendMessage(sender, text, isTyping = false) {
-            const msgs = document.getElementById('ai-chat-messages'); const div = document.createElement('div'); div.className = `chat-msg ${sender}`; if (isTyping) div.id = 'typing-' + Date.now();
-            if (sender === 'user') div.innerText = text; else div.innerHTML = text; msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight; return div.id;
-        }
+        function formatBotMessage(text) { return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
+        function sendChatMessage() { const input = document.getElementById('ai-chat-input'); const msg = input.value.trim(); if (!msg) return; appendMessage('user', msg); input.value = ''; input.disabled = true; const typingId = appendMessage('bot', '...', true); apiCall('askGeminiAssistant', {userMessage: msg}).then(response => { document.getElementById(typingId).remove(); appendMessage('bot', formatBotMessage(response)); input.disabled = false; input.focus(); }).catch(err => { document.getElementById(typingId).remove(); appendMessage('bot', '⚠️ 抱歉，連線發生異常。'); input.disabled = false; input.focus(); }); }
+        function appendMessage(sender, text, isTyping = false) { const msgs = document.getElementById('ai-chat-messages'); const div = document.createElement('div'); div.className = `chat-msg ${sender}`; if (isTyping) div.id = 'typing-' + Date.now(); if (sender === 'user') div.innerText = text; else div.innerHTML = text; msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight; return div.id; }
     </script>
 </body>
 </html>
