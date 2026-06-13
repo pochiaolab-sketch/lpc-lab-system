@@ -10,7 +10,10 @@
         .main-container { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 10px; padding-bottom: 40px; }
         .glass-card { background: #ffffff; border-radius: 16px; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05); padding: 15px 20px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
         .top-header-card { display: flex; justify-content: center; padding: 20px 15px; }
-        .header-content-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 1150px; } 
+        
+        /* 🌟 修改：將 max-width 從 1150px 放大到 1400px，讓搜尋框變得更長更寬 */
+        .header-content-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 1400px; } 
+        
         .top-logo { height: 145px; width: auto; object-fit: contain; flex-shrink: 0; margin-right: -45px; z-index: 2; position: relative; } 
         .top-search-area { flex-grow: 1; width: 100%; z-index: 1; position: relative; padding-left: 45px; }
         .top-search-title { font-weight: 800; color: #1e293b; font-size: 1.6rem; text-align: center; margin-bottom: 12px; padding-right: 45px; } 
@@ -111,7 +114,6 @@
                         🧪 LPC lab 藥品系統
                         <span id="refreshBtn" onclick="forceRefresh()" style="cursor: pointer; font-size: 1.2rem; margin-left: 5px; display: inline-block; user-select: none;" title="手動同步最新資料">🔄</span>
                     </h3>
-                    <!-- 🌟 搜尋列與新增按鈕並排 -->
                     <div class="d-flex gap-2">
                         <input type="text" id="searchInput" class="form-control search-input" placeholder="秒速載入中..." disabled>
                         <button id="openAddBtn" class="btn text-white shadow-sm" style="background-color: #4338ca; font-weight: 700; border-radius: 12px; white-space: nowrap; padding: 0 20px; transition: 0.2s;" onclick="openAddModal()" disabled>＋ 新增藥品</button>
@@ -150,9 +152,12 @@
                 </table>
             </div>
         </div>
+
+        <!-- 新增藥品專屬區塊 (隱藏作為後備) -->
+        <div class="glass-card mt-4" id="addChemicalSection" style="display: none; padding: 25px 30px;"></div>
     </div>
 
-    <!-- 🌟 將新增藥品改成 Modal 彈出視窗 -->
+    <!-- 將新增藥品改成 Modal 彈出視窗 -->
     <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
@@ -297,7 +302,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // 🔴 請確保這裡是你專屬的 Google 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbxJBLB2yQgs17l9fzbSVBNd94OseyyQrX-PlbfeZkrbyRpCYHPxiK8d62tz25RfevWUeQ/exec";
 
         const svgEdit = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
@@ -349,7 +353,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             editModalInstance = new bootstrap.Modal(document.getElementById('editModal')); 
-            addModalInstance = new bootstrap.Modal(document.getElementById('addModal')); // 初始化新增視窗
+            addModalInstance = new bootstrap.Modal(document.getElementById('addModal')); 
 
             let activeData = null; const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (localData) { try { const parsed = JSON.parse(localData); if (parsed.data && parsed.data.length > 0) activeData = parsed; } catch(e) {} }
@@ -379,13 +383,14 @@
         function initUI() {
             document.getElementById('tableWrapper').style.display = 'block'; document.getElementById('memoSection').style.display = 'block';
             
-            const searchInput = document.getElementById('searchInput'); searchInput.disabled = false; searchInput.placeholder = `🔍 智慧搜尋 ${chemicalData.length} 筆資料...`;
-            document.getElementById('openAddBtn').disabled = false; // 解除新增按鈕的鎖定
+            const searchInput = document.getElementById('searchInput'); searchInput.disabled = false; 
+            // 🌟 變更 placeholder，拿掉「智慧」兩個字
+            searchInput.placeholder = `🔍 搜尋 ${chemicalData.length} 筆資料...`;
+            document.getElementById('openAddBtn').disabled = false;
 
             renderDropdowns(); renderAddFormDropdowns(); renderMemos(); updateBuyList(); displayData(chemicalData);
         }
 
-        // 🌟 開啟新增藥品視窗並清空舊資料
         function openAddModal() {
             document.getElementById('addName').value = '';
             document.getElementById('addSheet').value = '';
@@ -412,7 +417,9 @@
                 const response = JSON.parse(jsonString); 
                 chemicalData = sortChemicalData(response.data || []); 
                 buyerList = response.buyers || []; memoList = response.memos || []; locationsMap = response.locationsMap || {}; vendorList = response.vendors || []; saveToLocal(); 
-                btn.classList.remove('spinning'); searchInput.disabled = false; searchInput.placeholder = `🔍 智慧搜尋 ${chemicalData.length} 筆資料...`;
+                btn.classList.remove('spinning'); searchInput.disabled = false; 
+                // 🌟 重新整理後，placeholder 也是簡潔版
+                searchInput.placeholder = `🔍 搜尋 ${chemicalData.length} 筆資料...`;
                 renderDropdowns(); renderAddFormDropdowns(); renderMemos(); updateBuyList(); document.getElementById('searchInput').dispatchEvent(new Event('input'));
             }).catch(err => { btn.classList.remove('spinning'); searchInput.disabled = false; alert("更新失敗，請檢查網路。"); });
         }
